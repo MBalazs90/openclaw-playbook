@@ -1,0 +1,2 @@
+# Defaults are loaded from group_vars/all.yml — this file left intentionally minimal.
+# Add role-specific defaults here if needed.

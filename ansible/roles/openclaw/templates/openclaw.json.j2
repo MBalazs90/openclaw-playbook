@@ -1,0 +1,35 @@
+{
+  "gateway": {
+    "mode": "local",
+    "trustedProxies": ["127.0.0.1", "::1", "172.16.0.0/12"],
+    "auth": {
+      "mode": "trusted-proxy",
+      "trustedProxy": {
+        "userHeader": "Tailscale-User-Login"
+      }
+    },
+    "controlUi": {
+      "allowedOrigins": ["https://{{ tailscale_hostname }}"]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "moonshot/kimi-k2.5"
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "moonshot": {
+        "baseUrl": "https://api.moonshot.ai/v1",
+        "apiKey": "${MOONSHOT_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          { "id": "kimi-k2.5", "name": "Kimi K2.5" }
+        ]
+      }
+    }
+  }
+}

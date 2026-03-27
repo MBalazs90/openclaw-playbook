@@ -1,0 +1,237 @@
+---
+# =============================================================================
+# Security hardening for Ubuntu droplet
+# =============================================================================
+
+# --------------- Dedicated openclaw user -------------------------------------
+- name: Create openclaw system group
+  ansible.builtin.group:
+    name: openclaw
+    system: true
+    state: present
+  become: true
+
+- name: Create openclaw system user
+  ansible.builtin.user:
+    name: openclaw
+    group: openclaw
+    shell: /bin/bash
+    home: /home/openclaw
+    system: true
+    create_home: true
+    state: present
+  become: true
+
+- name: Copy root authorized_keys to openclaw user
+  ansible.builtin.authorized_key:
+    user: openclaw
+    state: present
+    key: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}"
+  become: true
+
+- name: Allow openclaw user passwordless sudo
+  ansible.builtin.copy:
+    content: "openclaw ALL=(ALL) NOPASSWD: ALL\n"
+    dest: /etc/sudoers.d/openclaw
+    mode: "0440"
+    validate: "visudo -cf %s"
+  become: true
+
+# --------------- SSH hardening -----------------------------------------------
+- name: Harden sshd_config
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    validate: "sshd -t -f %s"
+  loop:
+    - { regexp: "^#?Port ", line: "Port {{ ssh_port }}" }
+    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin {{ ssh_permit_root_login }}" }
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication {{ ssh_password_authentication }}" }
+    - { regexp: "^#?X11Forwarding", line: "X11Forwarding {{ ssh_x11_forwarding }}" }
+    - { regexp: "^#?MaxAuthTries", line: "MaxAuthTries {{ ssh_max_auth_tries }}" }
+    - { regexp: "^#?ClientAliveInterval", line: "ClientAliveInterval {{ ssh_client_alive_interval }}" }
+    - { regexp: "^#?ClientAliveCountMax", line: "ClientAliveCountMax {{ ssh_client_alive_count_max }}" }
+    - { regexp: "^#?PermitEmptyPasswords", line: "PermitEmptyPasswords no" }
+    - { regexp: "^#?AllowAgentForwarding", line: "AllowAgentForwarding no" }
+    - { regexp: "^#?AllowTcpForwarding", line: "AllowTcpForwarding no" }
+  become: true
+  # NOTE: sshd is restarted in post_tasks (playbook.yml) to avoid
+  # losing root SSH mid-play before openclaw role has run.
+
+# Modern Ubuntu uses ssh.socket (systemd socket activation) which hardcodes port 22.
+# We must override it to use the randomized port.
+- name: Create ssh.socket override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/ssh.socket.d
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Override ssh.socket to use custom SSH port
+  ansible.builtin.copy:
+    content: |
+      [Socket]
+      ListenStream=
+      ListenStream=0.0.0.0:{{ ssh_port }}
+      ListenStream=[::]:{{ ssh_port }}
+    dest: /etc/systemd/system/ssh.socket.d/override.conf
+    mode: "0644"
+  become: true
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: Display randomized SSH port
+  ansible.builtin.debug:
+    msg: "SSH port randomized to: {{ ssh_port }}"
+
+# --------------- fail2ban (brute-force protection) ---------------------------
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+  become: true
+
+- name: Configure fail2ban jail for sshd
+  ansible.builtin.copy:
+    content: |
+      [sshd]
+      enabled = true
+      port = {{ ssh_port }}
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = {{ fail2ban_maxretry }}
+      bantime = {{ fail2ban_bantime }}
+      findtime = {{ fail2ban_findtime }}
+      backend = systemd
+    dest: /etc/fail2ban/jail.d/sshd.conf
+    mode: "0644"
+  become: true
+  notify: Restart fail2ban
+
+- name: Enable fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  become: true
+
+# --------------- Automatic security updates ----------------------------------
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+  become: true
+  when: enable_unattended_upgrades
+
+- name: Enable unattended-upgrades
+  ansible.builtin.copy:
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+  become: true
+  when: enable_unattended_upgrades
+
+# --------------- Kernel hardening (sysctl) -----------------------------------
+- name: Apply sysctl hardening
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    sysctl_file: /etc/sysctl.d/99-hardening.conf
+    state: present
+    reload: true
+  loop:
+    # Disable IP source routing
+    - { key: "net.ipv4.conf.all.accept_source_route", value: "0" }
+    - { key: "net.ipv6.conf.all.accept_source_route", value: "0" }
+    # Disable ICMP redirects
+    - { key: "net.ipv4.conf.all.accept_redirects", value: "0" }
+    - { key: "net.ipv6.conf.all.accept_redirects", value: "0" }
+    - { key: "net.ipv4.conf.all.send_redirects", value: "0" }
+    # Enable SYN flood protection
+    - { key: "net.ipv4.tcp_syncookies", value: "1" }
+    # Log martian packets
+    - { key: "net.ipv4.conf.all.log_martians", value: "1" }
+    # Ignore ICMP broadcast requests
+    - { key: "net.ipv4.icmp_echo_ignore_broadcasts", value: "1" }
+    # NOTE: net.ipv4.ip_forward must stay enabled (=1) for Docker networking
+    - { key: "net.ipv4.ip_forward", value: "1" }
+    # Restrict core dumps
+    - { key: "fs.suid_dumpable", value: "0" }
+    # Randomise memory space (ASLR)
+    - { key: "kernel.randomize_va_space", value: "2" }
+    # --- Kernel information leak prevention ---
+    # Hide kernel pointers from unprivileged users
+    - { key: "kernel.kptr_restrict", value: "2" }
+    # Restrict dmesg to root only
+    - { key: "kernel.dmesg_restrict", value: "1" }
+    # Restrict perf events to root only
+    - { key: "kernel.perf_event_paranoid", value: "3" }
+    # --- BPF hardening ---
+    # Disable unprivileged BPF
+    - { key: "kernel.unprivileged_bpf_disabled", value: "1" }
+    # Harden BPF JIT compiler
+    - { key: "net.core.bpf_jit_harden", value: "2" }
+    # --- Process isolation ---
+    # Restrict ptrace to parent processes only (Yama LSM)
+    - { key: "kernel.yama.ptrace_scope", value: "2" }
+    # --- Filesystem hardening ---
+    # Protect hardlinks and symlinks
+    - { key: "fs.protected_hardlinks", value: "1" }
+    - { key: "fs.protected_symlinks", value: "1" }
+    # Protect FIFOs and regular files in world-writable dirs
+    - { key: "fs.protected_fifos", value: "2" }
+    - { key: "fs.protected_regular", value: "2" }
+    # --- Network hardening (additional) ---
+    # Ignore bogus ICMP error responses
+    - { key: "net.ipv4.icmp_ignore_bogus_error_responses", value: "1" }
+    # Enable reverse path filtering (strict mode)
+    - { key: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { key: "net.ipv4.conf.default.rp_filter", value: "1" }
+    # Disable IPv6 router advertisements
+    - { key: "net.ipv6.conf.all.accept_ra", value: "0" }
+    - { key: "net.ipv6.conf.default.accept_ra", value: "0" }
+    # Apply default variants for completeness
+    - { key: "net.ipv4.conf.default.accept_source_route", value: "0" }
+    - { key: "net.ipv6.conf.default.accept_source_route", value: "0" }
+    - { key: "net.ipv4.conf.default.accept_redirects", value: "0" }
+    - { key: "net.ipv6.conf.default.accept_redirects", value: "0" }
+    - { key: "net.ipv4.conf.default.send_redirects", value: "0" }
+    - { key: "net.ipv4.conf.default.log_martians", value: "1" }
+    # --- Restrict unprivileged user namespaces ---
+    # Prevents container escape and sandbox bypass attacks
+    - { key: "kernel.unprivileged_userns_clone", value: "0" }
+  become: true
+
+# --------------- Misc hardening ----------------------------------------------
+- name: Set permissions on cron directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    mode: "0700"
+    owner: root
+    group: root
+  loop:
+    - /etc/cron.d
+    - /etc/cron.daily
+    - /etc/cron.hourly
+    - /etc/cron.monthly
+    - /etc/cron.weekly
+  become: true
+
+- name: Restrict su to root only
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/su
+    regexp: "^#?auth.*required.*pam_wheel.so"
+    line: "auth required pam_wheel.so use_uid"
+    state: present
+  become: true

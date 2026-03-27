@@ -1,0 +1,10 @@
+# Tailscale auth key — required for non-interactive setup
+# Generate at: https://login.tailscale.com/admin/settings/keys
+# Use a reusable, ephemeral key for automation
+tailscale_auth_key: ""
+
+# Enable Tailscale SSH (allows SSH over tailnet without port 22)
+tailscale_ssh: true
+
+# Tailscale Serve: proxy HTTPS to local openclaw gateway
+tailscale_serve_port: 18789

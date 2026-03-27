@@ -1,0 +1,47 @@
+# ------------------------------------------------------------------------------
+# OpenClaw deployment configuration
+# Override these via --extra-vars or a vault-encrypted file
+# ------------------------------------------------------------------------------
+
+# Git
+openclaw_repo: https://github.com/openclaw/openclaw.git
+openclaw_branch: main
+openclaw_install_dir: /opt/openclaw
+
+# Docker image
+openclaw_image_name: openclaw
+openclaw_image_tag: local
+
+# Gateway networking
+openclaw_gateway_port: 18789
+openclaw_bridge_port: 18790
+openclaw_gateway_bind: loopback
+
+# Persistent data
+openclaw_config_dir: /opt/openclaw-data/config
+openclaw_workspace_dir: /opt/openclaw-data/workspace
+
+# Auth — MUST be overridden (use --extra-vars or ansible-vault)
+openclaw_gateway_token: "change-me-to-a-long-random-token"
+
+# Model provider keys (set at least one)
+moonshot_api_key: ""
+anthropic_api_key: ""
+openai_api_key: ""
+
+# Optional channel tokens
+telegram_bot_token: ""
+discord_bot_token: ""
+slack_bot_token: ""
+slack_app_token: ""
+
+# Optional: install browser automation support (adds ~300 MB)
+openclaw_install_browser: false
+
+# Firewall: only SSH on public interface (gateway accessed via Tailscale only)
+# ssh_port is randomized per-host in hardening/defaults/main.yml
+firewall_allowed_ports:
+  - "{{ ssh_port }}/tcp"
+
+# Swap (useful for small droplets — Docker build is memory-hungry)
+swap_size_mb: 2048

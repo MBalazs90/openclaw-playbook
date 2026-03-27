@@ -1,0 +1,95 @@
+---
+# =============================================================================
+# Tailscale — install, authenticate, and configure Serve for openclaw
+# =============================================================================
+
+# --------------- Install Tailscale -------------------------------------------
+- name: Add Tailscale GPG key
+  ansible.builtin.get_url:
+    url: https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_facts['distribution_release'] }}.noarmor.gpg
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: "0644"
+  become: true
+
+- name: Add Tailscale apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu {{ ansible_facts['distribution_release'] }} main"
+    state: present
+    filename: tailscale
+  become: true
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+  become: true
+
+- name: Ensure tailscaled is running
+  ansible.builtin.service:
+    name: tailscaled
+    state: started
+    enabled: true
+  become: true
+
+# --------------- Authenticate ------------------------------------------------
+- name: Check Tailscale status
+  ansible.builtin.command: tailscale status --json
+  register: ts_status
+  changed_when: false
+  failed_when: false
+  become: true
+
+- name: Authenticate Tailscale
+  ansible.builtin.command: >
+    tailscale up
+    --authkey={{ tailscale_auth_key }}
+    {{ '--ssh' if tailscale_ssh else '' }}
+  when: >
+    tailscale_auth_key | length > 0 and
+    (ts_status.rc != 0 or (ts_status.stdout | from_json).BackendState != 'Running')
+  become: true
+
+- name: Re-check Tailscale status after authentication
+  ansible.builtin.command: tailscale status --json
+  register: ts_status
+  changed_when: false
+  failed_when: false
+  become: true
+
+- name: Warn if Tailscale not authenticated and no auth key
+  ansible.builtin.debug:
+    msg: >
+      Tailscale is not authenticated. Either provide tailscale_auth_key or
+      run 'sudo tailscale up --ssh' manually on the droplet.
+  when: >
+    tailscale_auth_key | length == 0 and
+    (ts_status.rc != 0 or (ts_status.stdout | from_json).BackendState != 'Running')
+
+# --------------- Tailscale Serve (HTTPS proxy to openclaw gateway) -----------
+- name: Configure Tailscale Serve for openclaw gateway
+  ansible.builtin.command: "tailscale serve --bg {{ tailscale_serve_port }}"
+  become: true
+  when: >
+    ts_status.rc == 0 and
+    (ts_status.stdout | from_json).BackendState == 'Running'
+
+# --------------- Display access URL ------------------------------------------
+- name: Get Tailscale hostname
+  ansible.builtin.command: tailscale status --json
+  register: ts_hostname_result
+  changed_when: false
+  become: true
+  when: >
+    ts_status.rc == 0 and
+    (ts_status.stdout | from_json).BackendState == 'Running'
+
+- name: Set tailscale_hostname fact for other roles
+  ansible.builtin.set_fact:
+    tailscale_hostname: "{{ (ts_hostname_result.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
+  when: ts_hostname_result is not skipped
+
+- name: Display Tailscale Serve URL
+  ansible.builtin.debug:
+    msg: "OpenClaw is available at: https://{{ tailscale_hostname }}"
+  when: tailscale_hostname is defined

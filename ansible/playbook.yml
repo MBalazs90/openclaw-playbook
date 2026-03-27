@@ -1,0 +1,91 @@
+---
+# =============================================================================
+# OpenClaw — Deploy to Digital Ocean Droplet (Kimi 2.5 / Moonshot)
+# =============================================================================
+# Usage:
+#   ansible-playbook playbook.yml \
+#     -e "openclaw_gateway_token=$(openssl rand -hex 32)" \
+#     -e "moonshot_api_key=sk-..." \
+#     -e "tailscale_auth_key=tskey-auth-..."
+#
+# Or with a vault file:
+#   ansible-playbook playbook.yml \
+#     --extra-vars @secrets.yml --ask-vault-pass
+# =============================================================================
+
+- name: Deploy OpenClaw
+  hosts: all
+  gather_facts: true
+
+  pre_tasks:
+    - name: Validate gateway token is set
+      ansible.builtin.assert:
+        that:
+          - openclaw_gateway_token != "change-me-to-a-long-random-token"
+        fail_msg: >
+          You must set openclaw_gateway_token. Example:
+          -e "openclaw_gateway_token=$(openssl rand -hex 32)"
+
+    - name: Validate at least one model API key is set
+      ansible.builtin.assert:
+        that:
+          - moonshot_api_key | length > 0 or anthropic_api_key | length > 0 or openai_api_key | length > 0
+        fail_msg: >
+          Set at least one model provider key (moonshot_api_key, anthropic_api_key, or openai_api_key).
+
+  roles:
+    - hardening
+    - tailscale
+    - openclaw
+
+  post_tasks:
+    - name: Restart ssh socket to apply new port ({{ ssh_port }})
+      ansible.builtin.systemd:
+        name: ssh.socket
+        state: restarted
+      become: true
+
+    - name: Restart ssh service to apply hardening
+      ansible.builtin.systemd:
+        name: ssh.service
+        state: restarted
+      become: true
+
+    # Switch Ansible's connection to the new SSH port and openclaw user
+    # (root login is now disabled by sshd hardening)
+    - name: Update ansible_port and user for new SSH config
+      ansible.builtin.set_fact:
+        ansible_port: "{{ ssh_port }}"
+        ansible_user: openclaw
+
+    - name: Wait for sshd on new port
+      ansible.builtin.wait_for:
+        port: "{{ ssh_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 30
+      delegate_to: localhost
+      become: false
+
+    - name: Close default port 22
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        delete: true
+      become: true
+      when: ssh_port | int != 22
+
+    - name: Get Tailscale hostname
+      ansible.builtin.command: tailscale status --json
+      register: final_ts_status
+      changed_when: false
+      failed_when: false
+      become: true
+
+    - name: Display dashboard URL
+      ansible.builtin.debug:
+        msg: >
+          OpenClaw deployed successfully!
+          Dashboard: https://{{ (final_ts_status.stdout | from_json).Self.DNSName | regex_replace('\.$', '') }}/#token={{ openclaw_gateway_token }}
+          SSH: ssh -p {{ ssh_port }} -i {{ ansible_ssh_private_key_file }} openclaw@{{ ansible_host }}
+      when: final_ts_status.rc == 0

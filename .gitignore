@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+
+# Secrets
+secrets.yml
+*.vault.yml
+
+# Tool configs
+.claude/
+.serena/
+
+# Ansible
+*.retry
