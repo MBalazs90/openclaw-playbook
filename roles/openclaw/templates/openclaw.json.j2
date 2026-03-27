@@ -22,6 +22,7 @@
   "models": {
     "mode": "merge",
     "providers": {
+{% if moonshot_api_key %}
       "moonshot": {
         "baseUrl": "https://api.moonshot.ai/v1",
         "apiKey": "${MOONSHOT_API_KEY}",
@@ -29,7 +30,28 @@
         "models": [
           { "id": "kimi-k2.5", "name": "Kimi K2.5" }
         ]
+      }{{ "," if anthropic_api_key or openai_api_key else "" }}
+{% endif %}
+{% if anthropic_api_key %}
+      "anthropic": {
+        "apiKey": "${ANTHROPIC_API_KEY}",
+        "models": [
+          { "id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6" },
+          { "id": "claude-opus-4-6", "name": "Claude Opus 4.6" }
+        ]
+      }{{ "," if openai_api_key else "" }}
+{% endif %}
+{% if openai_api_key %}
+      "openai": {
+        "baseUrl": "https://api.openai.com/v1",
+        "apiKey": "${OPENAI_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          { "id": "gpt-4o", "name": "GPT-4o" },
+          { "id": "o3", "name": "o3" }
+        ]
       }
+{% endif %}
     }
   }
 }
