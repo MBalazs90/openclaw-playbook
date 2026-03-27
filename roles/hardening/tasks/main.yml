@@ -23,7 +23,7 @@
   become: true
 
 - name: Copy root authorized_keys to openclaw user
-  ansible.builtin.authorized_key:
+  ansible.posix.authorized_key:
     user: openclaw
     state: present
     key: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}"

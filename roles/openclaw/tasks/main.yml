@@ -31,6 +31,7 @@
 
 - name: Create swap file
   ansible.builtin.command: "fallocate -l {{ swap_size_mb }}M /swapfile"
+  changed_when: true
   when: not swap_file.stat.exists
   become: true
 
@@ -43,11 +44,13 @@
 
 - name: Format swap file
   ansible.builtin.command: mkswap /swapfile
+  changed_when: true
   when: not swap_file.stat.exists
   become: true
 
 - name: Enable swap file
   ansible.builtin.command: swapon /swapfile
+  changed_when: true
   when: not swap_file.stat.exists
   become: true
 
