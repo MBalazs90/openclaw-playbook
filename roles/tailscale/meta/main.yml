@@ -1,0 +1,15 @@
+galaxy_info:
+  role_name: tailscale
+  author: mbalazs90
+  description: Install and configure Tailscale with Serve HTTPS proxy
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - noble
+  galaxy_tags:
+    - tailscale
+    - vpn
+    - networking
+dependencies: []

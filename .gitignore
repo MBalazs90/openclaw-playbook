@@ -11,3 +11,4 @@ secrets.yml
 
 # Ansible
 *.retry
+mbalazs90-openclaw-*.tar.gz

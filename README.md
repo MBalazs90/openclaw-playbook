@@ -1,6 +1,18 @@
-# OpenClaw Playbook
+# mbalazs90.openclaw
 
-Ansible playbook that deploys [OpenClaw](https://github.com/openclaw/openclaw) to a DigitalOcean droplet with hardened security and Tailscale-only access.
+Ansible Galaxy collection that deploys [OpenClaw](https://github.com/openclaw/openclaw) to a DigitalOcean droplet with hardened security and Tailscale-only access.
+
+## Installation
+
+```bash
+ansible-galaxy collection install mbalazs90.openclaw
+```
+
+Or from GitHub:
+
+```bash
+ansible-galaxy collection install git+https://github.com/MBalazs90/openclaw-playbook.git
+```
 
 ## Architecture
 
@@ -63,14 +75,30 @@ Ansible playbook that deploys [OpenClaw](https://github.com/openclaw/openclaw) t
 
 ## Quick start
 
-1. Update `ansible/inventory/hosts.yml` with your droplet IP and set `ansible_user: root` / `ansible_port: 22` for first run.
-
-2. Run the playbook:
+1. Install the collection:
 
 ```bash
-cd ansible
+ansible-galaxy collection install mbalazs90.openclaw
+```
 
-ansible-playbook playbook.yml \
+2. Create an inventory file with your droplet IP (use `ansible_user: root` / `ansible_port: 22` for first run):
+
+```yaml
+all:
+  hosts:
+    openclaw-droplet:
+      ansible_host: <DROPLET_IP>
+      ansible_user: root
+      ansible_port: 22
+      ansible_ssh_private_key_file: ~/.ssh/do-ocean
+      ansible_python_interpreter: /usr/bin/python3
+```
+
+3. Run the included playbook:
+
+```bash
+ansible-playbook mbalazs90.openclaw.deploy \
+  -i inventory.yml \
   -e "openclaw_gateway_token=$(openssl rand -hex 32)" \
   -e "moonshot_api_key=sk-..." \
   -e "tailscale_auth_key=tskey-auth-..."
@@ -79,15 +107,16 @@ ansible-playbook playbook.yml \
 Or use an Ansible Vault file:
 
 ```bash
-ansible-playbook playbook.yml \
+ansible-playbook mbalazs90.openclaw.deploy \
+  -i inventory.yml \
   --extra-vars @secrets.yml --ask-vault-pass
 ```
 
-See `secrets.yml.example` for the expected format.
+See `playbooks/secrets.yml.example` for the expected format.
 
-3. After the first run, update `hosts.yml` with the randomized SSH port (printed during deploy) and change `ansible_user` to `openclaw`.
+4. After the first run, update your inventory with the randomized SSH port (printed during deploy) and change `ansible_user` to `openclaw`.
 
-4. Access the dashboard at `https://<tailscale-hostname>` from any device on your tailnet.
+5. Access the dashboard at `https://<tailscale-hostname>` from any device on your tailnet.
 
 ## Security
 
@@ -101,33 +130,34 @@ See `secrets.yml.example` for the expected format.
 
 ## Configuration
 
-All variables are in `ansible/group_vars/all.yml`. Secrets must be passed via `--extra-vars` or Vault -- they are never stored in config files.
+All variables are in `playbooks/group_vars/all.yml`. Secrets must be passed via `--extra-vars` or Vault -- they are never stored in config files.
 
-## Project structure
+## Collection structure
 
 ```
-ansible/
+galaxy.yml                      # Collection metadata
+LICENSE
+README.md
+roles/
+  hardening/                    # SSH, fail2ban, UFW, sysctl
+    defaults/main.yml
+    handlers/main.yml
+    tasks/main.yml
+  tailscale/                    # Install, auth, Serve proxy
+    defaults/main.yml
+    handlers/main.yml
+    tasks/main.yml
+  openclaw/                     # Docker, build, deploy
+    defaults/main.yml
+    handlers/main.yml
+    tasks/main.yml
+    templates/
+      env.j2
+      openclaw.json.j2
+playbooks/
+  deploy.yml                    # Main deployment playbook
   ansible.cfg
-  playbook.yml
-  inventory/
-    hosts.yml
-  group_vars/
-    all.yml
-  roles/
-    hardening/
-      defaults/main.yml
-      handlers/main.yml
-      tasks/main.yml
-    tailscale/
-      defaults/main.yml
-      handlers/main.yml
-      tasks/main.yml
-    openclaw/
-      defaults/main.yml
-      handlers/main.yml
-      tasks/main.yml
-      templates/
-        env.j2
-        openclaw.json.j2
+  inventory/hosts.yml
+  group_vars/all.yml
   secrets.yml.example
 ```

@@ -1,0 +1,32 @@
+namespace: mbalazs90
+name: openclaw
+version: 1.0.3
+readme: README.md
+authors:
+  - Balazs M <mbalazs90>
+description: Deploy OpenClaw AI agent framework to DigitalOcean with hardened security and Tailscale-only access
+license_file: LICENSE
+tags:
+  - openclaw
+  - digitalocean
+  - tailscale
+  - docker
+  - security
+  - hardening
+  - ai
+  - deployment
+dependencies:
+  community.general: ">=8.0.0"
+  community.docker: ">=3.0.0"
+  ansible.posix: ">=1.0.0"
+repository: https://github.com/MBalazs90/openclaw-playbook
+issues: https://github.com/MBalazs90/openclaw-playbook/issues
+build_ignore:
+  - .git
+  - .gitignore
+  - .DS_Store
+  - .claude
+  - .serena
+  - "*.retry"
+  - secrets.yml
+  - "*.vault.yml"

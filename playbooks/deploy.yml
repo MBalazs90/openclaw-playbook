@@ -34,9 +34,9 @@
           Set at least one model provider key (moonshot_api_key, anthropic_api_key, or openai_api_key).
 
   roles:
-    - hardening
-    - tailscale
-    - openclaw
+    - mbalazs90.openclaw.hardening
+    - mbalazs90.openclaw.tailscale
+    - mbalazs90.openclaw.openclaw
 
   post_tasks:
     - name: Restart ssh socket to apply new port ({{ ssh_port }})
