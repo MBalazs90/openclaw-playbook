@@ -13,7 +13,10 @@
 
 - name: Add Tailscale apt repository
   ansible.builtin.apt_repository:
-    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu {{ ansible_facts['distribution_release'] }} main"
+    repo: >-
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+      https://pkgs.tailscale.com/stable/ubuntu
+      {{ ansible_facts['distribution_release'] }} main
     state: present
     filename: tailscale
   become: true
@@ -45,6 +48,7 @@
     tailscale up
     --authkey={{ tailscale_auth_key }}
     {{ '--ssh' if tailscale_ssh else '' }}
+  changed_when: true
   when: >
     tailscale_auth_key | length > 0 and
     (ts_status.rc != 0 or (ts_status.stdout | from_json).BackendState != 'Running')
@@ -69,6 +73,7 @@
 # --------------- Tailscale Serve (HTTPS proxy to openclaw gateway) -----------
 - name: Configure Tailscale Serve for openclaw gateway
   ansible.builtin.command: "tailscale serve --bg {{ tailscale_serve_port }}"
+  changed_when: true
   become: true
   when: >
     ts_status.rc == 0 and
