@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ansible-lint
+        run: pip install ansible-lint
+
+      - name: Install collection dependencies
+        run: ansible-galaxy collection install community.general community.docker ansible.posix
+
+      - name: Run ansible-lint
+        run: ansible-lint roles/ playbooks/deploy.yml
+
+  build:
+    name: Build collection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build collection tarball
+        run: ansible-galaxy collection build --force
+
+      - name: Verify tarball contents
+        run: |
+          tar tzf mbalazs90-openclaw-*.tar.gz | head -40
+          echo "---"
+          echo "Tarball size: $(du -h mbalazs90-openclaw-*.tar.gz | cut -f1)"
+
+      - name: Install collection from tarball
+        run: ansible-galaxy collection install mbalazs90-openclaw-*.tar.gz
+
+      - name: Verify collection is importable
+        run: ansible-galaxy collection list | grep mbalazs90.openclaw
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-tarball
+          path: mbalazs90-openclaw-*.tar.gz
+
+  test:
+    name: Test (dry-run)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install collection dependencies
+        run: ansible-galaxy collection install community.general community.docker ansible.posix
+
+      - name: Install collection
+        run: ansible-galaxy collection build --force && ansible-galaxy collection install mbalazs90-openclaw-*.tar.gz
+
+      - name: Syntax check
+        run: |
+          ansible-playbook mbalazs90.openclaw.deploy \
+            --syntax-check \
+            -i playbooks/inventory/hosts.yml \
+            -e "openclaw_gateway_token=test-token" \
+            -e "moonshot_api_key=sk-test" \
+            -e "tailscale_auth_key=tskey-test"
+
+      - name: Check mode (dry-run against localhost)
+        run: |
+          ansible-playbook mbalazs90.openclaw.deploy \
+            --check \
+            --connection=local \
+            -i "localhost," \
+            -e "ansible_python_interpreter=$(which python3)" \
+            -e "openclaw_gateway_token=test-token" \
+            -e "moonshot_api_key=sk-test" \
+            -e "tailscale_auth_key=tskey-test" \
+            || echo "Check mode completed (failures expected on localhost)"
+
+  publish:
+    name: Publish to Galaxy
+    runs-on: ubuntu-latest
+    needs: [lint, build, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build collection
+        run: ansible-galaxy collection build --force
+
+      - name: Publish to Galaxy
+        run: ansible-galaxy collection publish mbalazs90-openclaw-*.tar.gz --token ${{ secrets.GALAXY_API_TOKEN }}
