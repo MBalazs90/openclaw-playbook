@@ -282,6 +282,7 @@
             MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
             ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
             OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
   become: true
   become_user: openclaw
   notify: Restart openclaw
@@ -317,6 +318,7 @@
     MOONSHOT_API_KEY: "{{ moonshot_api_key }}"
     ANTHROPIC_API_KEY: "{{ anthropic_api_key }}"
     OPENAI_API_KEY: "{{ openai_api_key }}"
+    MINIMAX_API_KEY: "{{ minimax_api_key }}"
 
 # --------------- Health check ------------------------------------------------
 - name: Wait for gateway to be reachable
@@ -337,7 +339,7 @@
   changed_when: "'Installed' in skill_install.stdout"
   failed_when:
     - skill_install.rc != 0
-    - "'already installed' not in skill_install.stderr"
+    - "'already' not in skill_install.stderr"
   loop: "{{ openclaw_skills | select('string') | list }}"
   when: openclaw_skills | length > 0
 

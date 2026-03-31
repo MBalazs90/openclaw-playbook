@@ -39,7 +39,7 @@
           { "id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6" },
           { "id": "claude-opus-4-6", "name": "Claude Opus 4.6" }
         ]
-      }{{ "," if openai_api_key else "" }}
+      }{{ "," if openai_api_key or minimax_api_key else "" }}
 {% endif %}
 {% if openai_api_key %}
       "openai": {
@@ -49,6 +49,16 @@
         "models": [
           { "id": "gpt-4o", "name": "GPT-4o" },
           { "id": "o3", "name": "o3" }
+        ]
+      }{{ "," if minimax_api_key else "" }}
+{% endif %}
+{% if minimax_api_key %}
+      "minimax": {
+        "baseUrl": "https://api.minimaxi.chat/v1",
+        "apiKey": "${MINIMAX_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          { "id": "MiniMax-M1", "name": "MiniMax M1" }
         ]
       }
 {% endif %}

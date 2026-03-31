@@ -28,6 +28,7 @@ openclaw_gateway_token: "change-me-to-a-long-random-token"
 moonshot_api_key: ""
 anthropic_api_key: ""
 openai_api_key: ""
+minimax_api_key: ""
 
 # Optional channel tokens
 telegram_bot_token: ""

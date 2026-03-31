@@ -29,9 +29,14 @@
     - name: Validate at least one model API key is set
       ansible.builtin.assert:
         that:
-          - moonshot_api_key | length > 0 or anthropic_api_key | length > 0 or openai_api_key | length > 0
+          - >-
+            moonshot_api_key | length > 0 or
+            anthropic_api_key | length > 0 or
+            openai_api_key | length > 0 or
+            minimax_api_key | length > 0
         fail_msg: >
-          Set at least one model provider key (moonshot_api_key, anthropic_api_key, or openai_api_key).
+          Set at least one model provider key
+          (moonshot_api_key, anthropic_api_key, openai_api_key, or minimax_api_key).
 
   roles:
     - mbalazs90.openclaw.hardening
