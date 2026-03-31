@@ -1,7 +1,7 @@
 - name: Restart openclaw
   community.docker.docker_compose_v2:
     project_src: "{{ openclaw_install_dir }}"
-    state: restarted
+    state: "{{ item }}"
     profiles: []
   become: true
   become_user: openclaw
@@ -13,3 +13,6 @@
     OPENCLAW_GATEWAY_PORT: "{{ openclaw_gateway_port | string }}"
     OPENCLAW_BRIDGE_PORT: "{{ openclaw_bridge_port | string }}"
     OPENCLAW_GATEWAY_BIND: "{{ openclaw_gateway_bind }}"
+  loop:
+    - stopped
+    - present

@@ -65,7 +65,7 @@
   ansible.builtin.debug:
     msg: >
       Tailscale is not authenticated. Either provide tailscale_auth_key or
-      run 'sudo tailscale up --ssh' manually on the droplet.
+      run 'sudo tailscale up --ssh' manually on the server.
   when: >
     tailscale_auth_key | length == 0 and
     (ts_status.rc != 0 or (ts_status.stdout | from_json).BackendState != 'Running')

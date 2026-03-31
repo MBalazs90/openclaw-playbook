@@ -1,7 +1,14 @@
 ---
 # =============================================================================
-# Security hardening for Ubuntu droplet
+# Security hardening for Ubuntu server
 # =============================================================================
+
+# --------------- Update apt cache (required for fresh cloud images) ----------
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
 
 # --------------- Dedicated openclaw user -------------------------------------
 - name: Create openclaw system group

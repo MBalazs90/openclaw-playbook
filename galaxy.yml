@@ -4,10 +4,11 @@ version: 1.1.0
 readme: README.md
 authors:
   - Balazs M <mbalazs90>
-description: Deploy OpenClaw AI agent framework to DigitalOcean with hardened security and Tailscale-only access
+description: Deploy OpenClaw AI agent framework to any Ubuntu 24.04 cloud server (Hetzner, DigitalOcean, etc.) with hardened security and Tailscale-only access
 license_file: LICENSE
 tags:
   - openclaw
+  - hetzner
   - digitalocean
   - tailscale
   - docker

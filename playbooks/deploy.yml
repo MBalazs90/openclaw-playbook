@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# OpenClaw — Deploy to Digital Ocean Droplet (Kimi 2.5 / Moonshot)
+# OpenClaw — Deploy to Ubuntu 24.04 cloud server
 # =============================================================================
 # Usage:
 #   ansible-playbook playbook.yml \

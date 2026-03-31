@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# OpenClaw — full deployment on a fresh Ubuntu droplet
+# OpenClaw — full deployment on a fresh Ubuntu server
 # =============================================================================
 
 # --------------- System prerequisites ----------------------------------------
@@ -106,7 +106,7 @@
 
 - name: Add Docker repository
   ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable"
+    repo: "deb [arch={{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}] https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable"
     state: present
   become: true
 
@@ -262,14 +262,9 @@
   become_user: openclaw
   notify: Restart openclaw
 
-- name: Patch docker-compose.yml to bind to loopback
-  ansible.builtin.replace:
-    path: "{{ openclaw_install_dir }}/docker-compose.yml"
-    regexp: 'OPENCLAW_GATEWAY_BIND:-lan'
-    replace: 'OPENCLAW_GATEWAY_BIND:-loopback'
-  become: true
-  become_user: openclaw
-  notify: Restart openclaw
+# Note: the gateway inside the container must bind to 0.0.0.0 (lan) so Docker
+# port-forwarding works. Security is enforced by binding the *host* port to
+# 127.0.0.1 (see port mapping patches above) and UFW denying all inbound.
 
 - name: Inject model provider env vars into docker-compose services
   ansible.builtin.replace:
@@ -318,11 +313,8 @@
 
 # --------------- Health check ------------------------------------------------
 - name: Wait for gateway to be reachable
-  ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ openclaw_gateway_port }}"
-    status_code: [200, 401, 403]
-    timeout: 5
-  register: health
-  retries: 12
-  delay: 10
-  until: health is not failed
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ openclaw_gateway_port }}"
+    timeout: 120
+  become: true

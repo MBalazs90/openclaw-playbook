@@ -43,5 +43,5 @@ openclaw_install_browser: false
 firewall_allowed_ports:
   - "{{ ssh_port }}/tcp"
 
-# Swap (useful for small droplets — Docker build is memory-hungry)
+# Swap (useful for small instances — Docker build is memory-hungry)
 swap_size_mb: 2048

@@ -1,6 +1,6 @@
 # mbalazs90.openclaw
 
-Ansible Galaxy collection that deploys [OpenClaw](https://github.com/openclaw/openclaw) to a DigitalOcean droplet with hardened security and Tailscale-only access.
+Ansible Galaxy collection that deploys [OpenClaw](https://github.com/openclaw/openclaw) to any Ubuntu 24.04 cloud server (Hetzner, DigitalOcean, etc.) with hardened security and Tailscale-only access.
 
 ## Installation
 
@@ -20,7 +20,7 @@ ansible-galaxy collection install git+https://github.com/MBalazs90/openclaw-play
                     Internet
                        |
               +--------+--------+
-              | DigitalOcean    |
+              | Cloud Server    |
               | Ubuntu 24.04   |
               |                 |
               |  UFW: deny all  |
@@ -68,7 +68,7 @@ ansible-galaxy collection install git+https://github.com/MBalazs90/openclaw-play
 
 ## Prerequisites
 
-- A DigitalOcean droplet running Ubuntu 24.04 with your SSH key
+- A cloud server running Ubuntu 24.04 with your SSH key (Hetzner, DigitalOcean, or any provider)
 - Ansible installed locally
 - A [Tailscale auth key](https://login.tailscale.com/admin/settings/keys)
 - At least one model provider API key (Moonshot, Anthropic, or OpenAI)
@@ -81,16 +81,16 @@ ansible-galaxy collection install git+https://github.com/MBalazs90/openclaw-play
 ansible-galaxy collection install mbalazs90.openclaw
 ```
 
-2. Create an inventory file with your droplet IP (use `ansible_user: root` / `ansible_port: 22` for first run):
+2. Create an inventory file with your server IP (use `ansible_user: root` / `ansible_port: 22` for first run):
 
 ```yaml
 all:
   hosts:
-    openclaw-droplet:
-      ansible_host: <DROPLET_IP>
+    openclaw-server:
+      ansible_host: <SERVER_IP>
       ansible_user: root
       ansible_port: 22
-      ansible_ssh_private_key_file: ~/.ssh/do-ocean
+      ansible_ssh_private_key_file: ~/.ssh/id_ed25519
       ansible_python_interpreter: /usr/bin/python3
 ```
 
