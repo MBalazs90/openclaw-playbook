@@ -56,5 +56,19 @@ openclaw_skills:
   - self-improving-agent
   - playwright
 
+# MCP servers to configure
+# Each entry requires a name and config object passed to `openclaw mcp set`.
+# Examples:
+#   - name: senpi
+#     config:
+#       url: "https://mcp.prod.senpi.ai/mcp"
+#       headers:
+#         Authorization: "Bearer ..."
+#   - name: filesystem
+#     config:
+#       command: node
+#       args: ["server.js", "/workspace"]
+openclaw_mcp_servers: []
+
 # Swap (useful for small instances — Docker build is memory-hungry)
 swap_size_mb: 2048

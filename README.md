@@ -143,6 +143,23 @@ openclaw_skills:
   - { name: my-skill, git: "https://github.com/user/skill.git" } # from git
 ```
 
+### MCP servers
+
+Configure MCP servers automatically during deployment:
+
+```yaml
+openclaw_mcp_servers:
+  - name: senpi
+    config:
+      url: "https://mcp.prod.senpi.ai/mcp"
+      headers:
+        Authorization: "Bearer ..."
+  - name: filesystem
+    config:
+      command: node
+      args: ["server.js", "/workspace"]
+```
+
 ## Collection structure
 
 ```

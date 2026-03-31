@@ -357,3 +357,15 @@
     - "'already exists' not in git_skill.stderr"
   loop: "{{ openclaw_skills | select('mapping') | list }}"
   when: openclaw_skills | length > 0
+
+# --------------- MCP servers configuration ----------------------------------
+- name: Configure MCP servers
+  ansible.builtin.command:
+    cmd: >-
+      docker exec openclaw-openclaw-gateway-1
+      openclaw mcp set {{ item.name }} {{ item.config | to_json | quote }}
+  become: true
+  register: mcp_set
+  changed_when: "'Saved' in mcp_set.stdout"
+  loop: "{{ openclaw_mcp_servers }}"
+  when: openclaw_mcp_servers | length > 0
