@@ -43,5 +43,15 @@ openclaw_install_browser: false
 firewall_allowed_ports:
   - "{{ ssh_port }}/tcp"
 
+# Skills to install from ClawHub or git
+# Each entry is either a skill name (installed via ClawHub) or a dict with
+# name and git url for manual installation.
+# Examples:
+#   - self-improving-agent
+#   - { name: playwright, git: "https://github.com/user/playwright.git" }
+openclaw_skills:
+  - self-improving-agent
+  - playwright
+
 # Swap (useful for small instances — Docker build is memory-hungry)
 swap_size_mb: 2048

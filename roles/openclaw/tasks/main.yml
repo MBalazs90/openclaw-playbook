@@ -325,3 +325,33 @@
     port: "{{ openclaw_gateway_port }}"
     timeout: 120
   become: true
+
+# --------------- Skills installation ----------------------------------------
+- name: Install ClawHub skills
+  ansible.builtin.command:
+    cmd: >-
+      docker exec openclaw-openclaw-gateway-1
+      openclaw skills install {{ item }}
+  become: true
+  register: skill_install
+  changed_when: "'Installed' in skill_install.stdout"
+  failed_when:
+    - skill_install.rc != 0
+    - "'already installed' not in skill_install.stderr"
+  loop: "{{ openclaw_skills | select('string') | list }}"
+  when: openclaw_skills | length > 0
+
+- name: Install git-based skills
+  ansible.builtin.command:
+    cmd: >-
+      docker exec openclaw-openclaw-gateway-1
+      git clone {{ item.git }}
+      /home/node/.openclaw/skills/{{ item.name }}
+  become: true
+  register: git_skill
+  changed_when: git_skill.rc == 0
+  failed_when:
+    - git_skill.rc != 0
+    - "'already exists' not in git_skill.stderr"
+  loop: "{{ openclaw_skills | select('mapping') | list }}"
+  when: openclaw_skills | length > 0

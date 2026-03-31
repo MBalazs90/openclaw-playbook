@@ -132,6 +132,17 @@ See `playbooks/secrets.yml.example` for the expected format.
 
 All variables are in `playbooks/group_vars/all.yml`. Secrets must be passed via `--extra-vars` or Vault -- they are never stored in config files.
 
+### Skills
+
+Install ClawHub skills or git-based skills automatically during deployment:
+
+```yaml
+openclaw_skills:
+  - self-improving-agent                                          # from ClawHub
+  - playwright                                                    # from ClawHub
+  - { name: my-skill, git: "https://github.com/user/skill.git" } # from git
+```
+
 ## Collection structure
 
 ```
